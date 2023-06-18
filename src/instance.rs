@@ -31,12 +31,12 @@ impl InstanceClient {
     }
 
     pub fn start(&self) {
-        while let Err(e) = self.client.register(&self.config.app, &*self.config) {
+        if let Err(e) = self.client.register(&self.config.app, &*self.config) {
             error!("Failed to register app: {}", e);
-            thread::sleep(Duration::from_secs(15));
+        } else {
+            debug!("Registered app with eureka");
         }
-        debug!("Registered app with eureka");
-
+        
         self.is_running.store(true, Ordering::Relaxed);
 
         let is_running = Arc::clone(&self.is_running);
@@ -58,7 +58,7 @@ impl InstanceClient {
                     }
                 };
             };
-            thread::sleep(Duration::from_secs(30));
+
             while is_running.load(Ordering::Relaxed) {
                 let resp = client.send_heartbeat(&config.app, &instance_id);
                 match resp {
@@ -78,12 +78,11 @@ impl InstanceClient {
             }
         });
 
-        while let Err(e) =
+        if let Err(e) =
             self.client
                 .update_status(&self.config.app, &self.get_instance_id(), StatusType::Up)
         {
             error!("Failed to set app to UP: {}", e);
-            thread::sleep(Duration::from_secs(15));
         }
     }
 }
